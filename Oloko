@@ -1,0 +1,504 @@
+--[[
+      Nick Hub Steal GUI
+      Integrado: Speed Booster | 3rd Floor | Teleguiado | Mobile Desync
+--]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+
+-- Criar ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CustomUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-------------------------------------------------
+-- Bolinha flutuante (toggle da UI)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+toggleButton.BackgroundTransparency = 0.3
+toggleButton.Text = "Nick"
+toggleButton.Font = Enum.Font.Arcade
+toggleButton.TextSize = 16
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Active = true
+toggleButton.Draggable = true
+toggleButton.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = toggleButton
+
+-------------------------------------------------
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 160, 0, 220)
+mainFrame.Position = UDim2.new(0.5, -80, 0.5, -110)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+-- Borda arredondada
+local border = Instance.new("UICorner")
+border.CornerRadius = UDim.new(0, 12)
+border.Parent = mainFrame
+
+-- Borda branca usando UIStroke
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Parent = mainFrame
+
+
+-- Título
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 25)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Nick Hub Steal"
+titleLabel.Font = Enum.Font.Arcade
+titleLabel.TextSize = 16
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Parent = mainFrame
+
+-- Layout vertical
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.FillDirection = Enum.FillDirection.Vertical
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.VerticalAlignment = Enum.VerticalAlignment.Top
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = mainFrame
+
+-------------------------------------------------
+-- Função criar botão estilizado com animação
+local function createButton(name)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 140, 0, 28)
+    button.Text = name
+    button.Font = Enum.Font.Arcade
+    button.TextSize = 16
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.AutoButtonColor = false
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+
+    button.Parent = mainFrame
+
+    -- Hover animation
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
+    end)
+    -- Click animation
+    button.MouseButton1Down:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.08), {Size = UDim2.new(0, 130, 0, 26)}):Play()
+    end)
+    button.MouseButton1Up:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.08), {Size = UDim2.new(0, 140, 0, 28)}):Play()
+    end)
+
+    return button
+end
+
+-- Botões principais
+local speedButton = createButton("Speed Booster")
+local floorButton = createButton("3rd Floor")
+local teleguiadoButton = createButton("Teleguiado")
+local extraButton = createButton("Desync")
+local espplayer = createButton("Esp Players")
+
+-------------------------------------------------
+-- Toggle UI
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+-------------------------------------------------
+-- Speed Booster
+do
+    local humanoid
+    local active = false
+
+    local function updateHumanoid()
+        humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    end
+    LocalPlayer.CharacterAdded:Connect(updateHumanoid)
+    updateHumanoid()
+
+    speedButton.MouseButton1Click:Connect(function()
+        if not humanoid then return end
+        active = not active
+        if active then
+            humanoid.WalkSpeed = 27
+            speedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        else
+            humanoid.WalkSpeed = 16
+            speedButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+    end)
+end
+
+-------------------------------------------------
+-- 3rd Floor (plataforma para só quando torso encostar)
+do
+    local player = game.Players.LocalPlayer
+    local runService = game:GetService("RunService")
+    local workspace = game:GetService("Workspace")
+
+    local platform = nil
+    local active = false
+    local connection = nil
+    local RISE_SPEED = 15
+
+    local function destroyPlatform()
+        if platform then
+            platform:Destroy()
+            platform = nil
+        end
+        active = false
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+        floorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+    end
+
+    local function makeBasesTransparent()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and (obj.Name:lower():find("base") or obj.Name:lower():find("plot")) then
+                obj.LocalTransparencyModifier = 0.5
+            end
+        end
+    end
+
+    local function setup3rdFloor(character)
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        floorButton.MouseButton1Click:Connect(function()
+            active = not active
+            if active then
+                -- cria plataforma
+                platform = Instance.new("Part")
+                platform.Size = Vector3.new(6, 0.5, 6)
+                platform.Anchored = true
+                platform.CanCollide = true
+                platform.Color = Color3.fromRGB(255, 200, 0)
+                platform.Position = rootPart.Position - Vector3.new(0, rootPart.Size.Y / 2 + 0.25, 0)
+                platform.Parent = workspace
+
+                -- textura
+                for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
+                    local studs = Instance.new("Texture")
+                    studs.Texture = "rbxassetid://6731652062"
+                    studs.Face = face
+                    studs.StudsPerTileU = 4
+                    studs.StudsPerTileV = 4
+                    studs.Parent = platform
+                end
+
+                -- sobe junto com player
+                connection = runService.Heartbeat:Connect(function(dt)
+                    if platform and active and rootPart then
+                        -- Raycast do torso pra cima
+                        local rayOrigin = rootPart.Position
+                        local rayDirection = Vector3.new(0, 5, 0)
+                        local raycastParams = RaycastParams.new()
+                        raycastParams.FilterDescendantsInstances = {platform, player.Character}
+                        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+                        local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+                        if not result then
+                            local newPos = Vector3.new(rootPart.Position.X, platform.Position.Y + dt * RISE_SPEED, rootPart.Position.Z)
+                            platform.Position = newPos
+                        end
+                    end
+                end)
+
+                makeBasesTransparent()
+                floorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            else
+                destroyPlatform()
+            end
+        end)
+        character:WaitForChild("Humanoid").Died:Connect(destroyPlatform)
+    end
+
+    if player.Character then setup3rdFloor(player.Character) end
+    player.CharacterAdded:Connect(setup3rdFloor)
+end
+
+-------------------------------------------------
+-- Teleguiado
+do
+    local flying = false
+    local flySpeed = 20
+    local bodyGyro, bodyVel
+
+    local function updateRoot()
+        return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    end
+
+    teleguiadoButton.MouseButton1Click:Connect(function()
+        local hrp = updateRoot()
+        if not hrp then return end
+        flying = not flying
+        if flying then
+            bodyGyro = Instance.new("BodyGyro", hrp)
+            bodyVel = Instance.new("BodyVelocity", hrp)
+            bodyGyro.MaxTorque = Vector3.new(1e5,1e5,1e5)
+            bodyVel.MaxForce = Vector3.new(1e5,1e5,1e5)
+            teleguiadoButton.BackgroundColor3 = Color3.fromRGB(0,200,0)
+            task.spawn(function()
+                while flying and hrp.Parent do
+                    bodyGyro.CFrame = Workspace.CurrentCamera.CFrame
+                    bodyVel.Velocity = Workspace.CurrentCamera.CFrame.LookVector * flySpeed
+                    task.wait()
+                end
+                if bodyGyro then bodyGyro:Destroy() end
+                if bodyVel then bodyVel:Destroy() end
+            end)
+        else
+            flying=false
+            teleguiadoButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        end
+    end)
+end
+
+-------------------------------------------------
+-- DESYNC (Mobile Desync otimizado)
+do
+    local desyncActive = false
+
+    local function enableMobileDesync()
+        local success, error = pcall(function()
+            local backpack = LocalPlayer:WaitForChild("Backpack")
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+
+            local packages = ReplicatedStorage:WaitForChild("Packages",5)
+            local netFolder = packages:WaitForChild("Net",5)
+            local useItemRemote = netFolder:WaitForChild("RE/UseItem",5)
+            local teleportRemote = netFolder:WaitForChild("RE/QuantumCloner/OnTeleport",5)
+
+            local toolNames = {"Quantum Cloner","Brainrot","brainrot"}
+            local tool
+            for _, tName in ipairs(toolNames) do
+                tool = backpack:FindFirstChild(tName) or character:FindFirstChild(tName)
+                if tool then break end
+            end
+            if not tool then
+                for _, item in ipairs(backpack:GetChildren()) do
+                    if item:IsA("Tool") then tool=item break end
+                end
+            end
+
+            if tool and tool.Parent==backpack then
+                humanoid:EquipTool(tool)
+                task.wait(0.5)
+            end
+
+            if setfflag then setfflag("WorldStepMax","-9999999999") end
+            task.wait(0.2)
+            useItemRemote:FireServer()
+            task.wait(1)
+            teleportRemote:FireServer()
+            task.wait(2)
+            if setfflag then setfflag("WorldStepMax","-1") end
+            return true
+        end)
+        if not success then warn(error) end
+        return success
+    end
+
+    local function disableMobileDesync()
+        pcall(function()
+            if setfflag then setfflag("WorldStepMax","-1") end
+        end)
+    end
+
+    extraButton.MouseButton1Click:Connect(function()
+        desyncActive = not desyncActive
+        if desyncActive then
+            local ok = enableMobileDesync()
+            extraButton.BackgroundColor3 = ok and Color3.fromRGB(200,200,0) or Color3.fromRGB(220,20,60)
+            if not ok then desyncActive=false end
+        else
+            disableMobileDesync()
+            extraButton.BackgroundColor3 = Color3.fromRGB(220,20,60)
+        end
+    end)
+
+    LocalPlayer.CharacterAdded:Connect(function()
+        desyncActive=false
+        extraButton.BackgroundColor3 = Color3.fromRGB(220,20,60)
+    end)
+end
+
+-------------------------------------------------
+-- ESP Players (Highlight + Tag com nome e avatar)
+local espActive = false
+local espConnections = {}
+
+espplayer.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    espplayer.BackgroundColor3 = espActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(40, 40, 40)
+
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- Cria tag acima da cabeça
+    local function createNameTag(player, character)
+        if not character or not espActive then return end
+        local head = character:FindFirstChild("Head")
+        if not head then return end
+
+        -- Remove se já existir
+        local oldTag = head:FindFirstChild("ESP_Tag")
+        if oldTag then oldTag:Destroy() end
+
+        -- Billboard principal
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Tag"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 120, 0, 26)
+        billboard.StudsOffset = Vector3.new(0, 2.4, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
+
+        -- Fundo preto translúcido
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bg.BackgroundTransparency = 0.4
+        bg.Parent = billboard
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = bg
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 1.5
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = bg
+
+        -- Layout horizontal (avatar + nome)
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 4)
+        layout.Parent = bg
+
+        -- Avatar (imagem de perfil)
+        local avatar = Instance.new("ImageLabel")
+        avatar.Size = UDim2.new(0, 20, 0, 20)
+        avatar.BackgroundTransparency = 1
+        avatar.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+        avatar.Parent = bg
+
+        local avatarCorner = Instance.new("UICorner")
+        avatarCorner.CornerRadius = UDim.new(1, 0)
+        avatarCorner.Parent = avatar
+
+        -- Nome do player
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(0, 80, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.DisplayName or player.Name
+        nameLabel.Font = Enum.Font.Arcade
+        nameLabel.TextSize = 13
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = bg
+    end
+
+    -- Cria highlight branco
+    local function createHighlight(character)
+        if not character then return end
+        if character:FindFirstChild("ESP_Highlight") then
+            character.ESP_Highlight:Destroy()
+        end
+        local h = Instance.new("Highlight")
+        h.Name = "ESP_Highlight"
+        h.FillTransparency = 1
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.OutlineTransparency = 0
+        h.Parent = character
+    end
+
+    -- Remove ESP do personagem
+    local function removeESP(character)
+        if not character then return end
+        local tag = character:FindFirstChild("Head") and character.Head:FindFirstChild("ESP_Tag")
+        if tag then tag:Destroy() end
+        local h = character:FindFirstChild("ESP_Highlight")
+        if h then h:Destroy() end
+    end
+
+    -- Limpa tudo
+    local function clearAllESP()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                removeESP(p.Character)
+            end
+        end
+    end
+
+    -- Ativar ESP
+    if espActive then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                createHighlight(p.Character)
+                createNameTag(p, p.Character)
+            end
+
+            espConnections[p] = p.CharacterAdded:Connect(function(char)
+                task.wait(1)
+                if espActive then
+                    createHighlight(char)
+                    createNameTag(p, char)
+                end
+            end)
+        end
+
+        espConnections["PlayerAdded"] = Players.PlayerAdded:Connect(function(p)
+            task.wait(1)
+            if espActive and p.Character then
+                createHighlight(p.Character)
+                createNameTag(p, p.Character)
+            end
+            espConnections[p] = p.CharacterAdded:Connect(function(char)
+                task.wait(1)
+                if espActive then
+                    createHighlight(char)
+                    createNameTag(p, char)
+                end
+            end)
+        end)
+    else
+        -- Desligar ESP
+        clearAllESP()
+        for _, conn in pairs(espConnections) do
+            if typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
+        end
+        espConnections = {}
+    end
+end)
