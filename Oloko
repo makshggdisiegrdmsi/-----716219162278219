@@ -3,6 +3,28 @@
       Integrado: Speed Booster | 3rd Floor | Teleguiado | Mobile Desync
 --]]
 
+-- Whitelist de jogadores
+local allowedPlayers = {
+    "Foortataq",
+    "Bakugo_Master4",
+    "victor2014de"
+}
+
+-- Verifica se o jogador atual está na whitelist
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local isAllowed = false
+for _, name in ipairs(allowedPlayers) do
+    if LocalPlayer.Name == name then
+        isAllowed = true
+        break
+    end
+end
+
+if not isAllowed then
+    warn("Você não tem permissão para executar este script.")
+    return -- Interrompe a execução do script
+end
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
