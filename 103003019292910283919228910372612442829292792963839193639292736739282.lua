@@ -1380,4 +1380,5 @@ if IsAutorizado(LocalPlayer.Name) then
     CreateMovableButton()
 end
 
+
 -- fim do script
